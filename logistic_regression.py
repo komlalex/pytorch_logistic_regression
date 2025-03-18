@@ -425,6 +425,25 @@ and distribution as the test set (which often comes from real world data)"""
 Since we've trained our model for a long time and achieved a reasonable accuracy, it would be a good idea to save the weights and 
 bias matrices to disk, so that we can reuse the model later to avoid retraining from scratch. Here's how to save the model"""
 MODELS_PATH = Path("models/")
-MODELS_PATH.mkdir(parents=True, exist_ok=True)
-MODEL_SAVE_PATH = MODELS_PATH / "mnist-logistic.pth"
-torch.save(model.state_dict(), MODEL_SAVE_PATH) 
+MODELS_PATH.mkdir(parents=True, exist_ok=True) 
+MODEL_NAME = "mnist-logistic.pth"
+MODEL_SAVE_PATH = MODELS_PATH / MODEL_NAME
+torch.save(model.state_dict(), MODEL_SAVE_PATH)   
+
+"""The .state_dict method returns an OrderedDict containing all the weight and bias matrices mapped to the right attributes of the model"""
+#print(model.state_dict()) 
+
+""" To load the model weights, we can instatiate a new object of
+ the MnistModel, and use the .load_state_dict method""" 
+model2 = MnistModel() 
+
+"""Evaluate the model before loading the state dict"""
+result = evaluate(model2, test_dl) 
+print(result)
+
+# Load state dict
+model2.load_state_dict(torch.load(MODEL_SAVE_PATH, weights_only=True))  
+
+"""Evaluate model again"""
+result = evaluate(model2, test_dl)
+print(result)
