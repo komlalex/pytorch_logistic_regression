@@ -173,10 +173,10 @@ class MnistModel(nn.Module):
 model = MnistModel() 
 
 for xb, yb in train_dl: 
-    print(xb.shape)
+    #print(xb.shape)
     outputs = model(xb) 
-    print(f"Outputs shape: {outputs.shape}") 
-    print(f"Sample outputs: \n{outputs[:2].data}") 
+    #print(f"Outputs shape: {outputs.shape}") 
+    #print(f"Sample outputs: \n{outputs[:2].data}") 
 
     # Apply softmax for each output row 
     probs = F.softmax(outputs, dim=1) 
@@ -185,7 +185,7 @@ for xb, yb in train_dl:
     #print(f"Sample probabilities: \n{probs[:2]}")
 
     # Add up the probabilties of an output row 
-    print(f"Sum: {torch.sum(probs[0]).item()}") 
+    #print(f"Sum: {torch.sum(probs[0]).item()}") 
 
     # Get prediction labels from probalities 
     preds = torch.argmax(probs, dim=1)  
@@ -197,11 +197,11 @@ for xb, yb in train_dl:
 
     # Calculate accuracy 
     acc = accuracy(outputs, yb) 
-    print(f"Accuracy: {acc: .4f}") 
+    #print(f"Accuracy: {acc: .4f}") 
 
     # Calculate loss 
-    loss = loss_fn(probs, yb) 
-    print(f"Loss: {loss: .5f}")
+    loss = loss_fn(outputs, yb) 
+    #print(f"Loss: {loss: .5f}")
 
     break  
 
@@ -239,4 +239,110 @@ Unlike accuracy, cross-entropy is a contiguous and differentiable function. It a
 These two factors make cross-entropy a better choice for the loss function. 
 
 As you might expect, PyTorch provides an efficient implementation of cross-entropy as part of the torch.nn.funcrional package. 
-Moreover, it also performs softmax internally, so we can directly pass the model's predictions wihtout converting into probabilities""" 
+Moreover, it also performs softmax internally, so we can directly pass the model's predictions wihtout converting into probabilities. 
+
+We know that cross entropy is the negative logarithm of the predicted probability of the correct label averaged over all training samples. Therefore, one way to interpret the resulting number e.g. 2.23 is look at 
+e^-2.23 which is around 0.1 as the predicted probability of the correct label, on average. The lower the loss, the better 
+the model."""  
+
+"""TRAINING THE MODEL 
+Now that we defined the data loaders, model, loss function and optimizer, we are ready to train the model. The training process is 
+identical to linear regression, with the addition of "validation phase" to evalaute the model in each epoch. 
+Here's what it looks like in pseudocode:
+
+for epoch in range(num_epochs): 
+    # Training phase 
+    for batch in train_dl: 
+        # Generate predictions 
+        # Calculate loss 
+        # Compute gradients 
+        # update weights 
+        # Reset gradients 
+    
+    # Validation phase 
+    for batch in val_dl: 
+        # Generate predictions 
+        # Calculate loss 
+        # Calculate metrics (accuracy, etc.)
+    # Calculate average validation loss and metrics 
+    # Log epoch, loss and metrics for inspection 
+
+Some parts of the training loop are specific to the problem we're solving (e.g loss, metrics) whereas 
+others are generic and can be applied to any deep learning problem. 
+
+We'll include the problem-independent parts within a function called fit, which will be used 
+to train the model. The problem-specific parts will be implemented by adding new methods to the nn.Module class
+"""""
+
+def fit(epochs: int, lr: float, model: nn.Module, train_dl: DataLoader, val_dl: DataLoader, opt_func=torch.optim.SGD): 
+    optimizer = opt_func(model.parameters(), lr) 
+    history = [] # recording epoch-wise results
+
+    for epoch in range(epochs): 
+
+        # Training Phase
+        for batch in train_dl: 
+            loss = model.training_step(batch) 
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad() 
+
+        # Validation phase 
+        result = evaluate(model, val_dl)
+        model.epoch_end(epoch, result) 
+        history.append(result) 
+    return history
+            
+def evaluate(model, val_dl): 
+    outputs = [model.validation_step(batch) for batch in val_dl] 
+    return model.validation_epoch_end(outputs) 
+
+"""Finally let's redefine the MnistModel class to include aditional methods training_step, 
+validation_step, validation_epoch_end, and epoch_end used by fit and evalaute"""
+
+class MnistModel(nn.Module): 
+    def __init__(self):
+        super().__init__() 
+        self.linear = nn.Linear(input_size, num_classes)
+        
+    def forward(self, xb): 
+        xb = xb.reshape(-1, 784)
+        out = self.linear(xb) 
+        return out 
+    
+    def training_step(self, batch): 
+        images, labels = batch 
+        out = self(images) # Generate predictions
+        loss = F.cross_entropy(out, labels) # Calculate loss 
+        return loss 
+    
+    def validation_step(self, batch): 
+        images, labels = batch 
+        out = self(images)                  # Generate predictions
+        loss = F.cross_entropy(out, labels) # Calculate loss
+        acc = accuracy(out, labels)         # Calculate accuracy
+        return {"val_loss": loss, "val_acc": acc} 
+    
+    def validation_epoch_end(self, outputs):
+        batch_losses = [x["val_loss"] for x in outputs] 
+        epoch_loss = torch.stack(batch_losses).mean() # Combine losses and find average
+        batch_accs = [x["val_acc"] for x in outputs] 
+        epoch_acc = torch.stack(batch_accs).mean()    # Combine accuracies and find average
+        return {"val_loss": epoch_loss.item(), "val_acc": epoch_acc.item()}
+    
+    def epoch_end(self, epoch, result): 
+        print(f"Epoch: {epoch} val_loss: {result["val_loss"]:.4f} val_acc: {result["val_acc"]:.4f}") 
+
+model = MnistModel()
+
+
+"""Before we train the model, let's see how the model performs on the validation set 
+with the initial set of randomly initialized weights & biases"""
+
+result0 = evaluate(model, val_dl)
+#print(result0)
+
+"""The intial accuracy is around 19%, which one might expect from a randomly intialized 
+model (since it has a 1 in 10 chance of getting a label right by guessing)"""
+
+history1 = fit(8, 0.001, model, train_dl, val_dl) 
