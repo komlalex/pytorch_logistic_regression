@@ -1,6 +1,7 @@
 """Working with Images and Logistic Regression""" 
 import torch 
 import torch.nn as nn 
+from torch.utils.data import random_split
 
 import torchvision 
 from torchvision.datasets import MNIST 
@@ -62,4 +63,23 @@ in between different shades of rey. We can also plot the tensor as an image usin
 # Plot the image by passing in the 28x28 matrix 
 plt.figure()
 plt.imshow(img_tensor[0, 10:15, 10:15], cmap="gray")
-plt.show()
+#plt.show() 
+
+"""TRAINING AND VALIDATION DATASETS
+
+While building real-world machine learning models, it is quite common to split the dataset into three: 
+1. Training set - used to train the model, i.e., compute the loss and adjust the model's weights using 
+gradient descent.
+2. Validation set - used to evaluate the model during training, adjust hyperparameters (learning rate, etc), 
+and pick the best version of the model
+3. Test set - used to compare different models or approaches and report the model's 
+final accuracy. 
+
+In the MNIST dataset, there are 60,000 training images and 10,000 test images. The test set is standardized so that different
+researches can report their models' resultsss against the same collection of images.
+
+Since there's no predefined validation set, we must manually split the 60,000 images into training and valiadation 
+datasets. Let's set aside 10,000 randomly chosen images for validation. We can do this using the random_split method from PyTorch
+"""
+train_ds, val_ds = random_split(dataset, [50_000, 10_000]) 
+print(len(train_ds), len(val_ds))
