@@ -10,7 +10,7 @@ from torchvision.datasets import MNIST
 import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt  
-
+import pandas as pd
 # Download training dataset 
 dataset = MNIST(root="data/", download=True) 
 
@@ -177,10 +177,20 @@ for xb, yb in train_dl:
     print(f"Sample probabilities: \n{probs[:2]}")
 
     # Add up the probabilties of an output row 
-    print(f"Sum: {torch.sum(probs[0]).item()}")
+    print(f"Sum: {torch.sum(probs[0]).item()}") 
+
+    # Get prediction labels from probalities 
+    preds = torch.argmax(probs, dim=1)  
+    print(preds) 
+
+    df = pd.DataFrame({"y_true": yb, "y_preds": preds}) 
+    print(df)
 
     break  
 
 """To convert the output rows into proberbilities, we use the softmax function. 
 While it's easy to implement the softmax function, we'll use the implementation that's provided withing PyTorch because it works well with 
 multidimensional tensors (a list of output rows in our case)""" 
+
+"""Finally, we determined the predicted label for each image by simply choosing the index of the highest probability in each output row. We can do this by using the torch.armax, the index of the rows's largest
+element OR torch.max which returns each row's largest element and the corresponding index""" 
