@@ -10,7 +10,9 @@ from torchvision.datasets import MNIST
 import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt  
-import pandas as pd
+import pandas as pd 
+
+from pathlib import Path
 # Download training dataset 
 dataset = MNIST(root="data/", download=True) 
 
@@ -27,7 +29,7 @@ de-facto plotting and graphing library for data science in Python."""
 
 
 plt.figure(figsize=(10,8))
-image, label = dataset[0] 
+image, label = dataset[0]  
 plt.subplot(1, 2, 1)
 plt.imshow(image, cmap="gray") 
 plt.title(f"Label: {label}")
@@ -345,15 +347,84 @@ result0 = evaluate(model, val_dl)
 """The intial accuracy is around 19%, which one might expect from a randomly intialized 
 model (since it has a 1 in 10 chance of getting a label right by guessing)"""
 
-history = fit(20, 0.001, model, train_dl, val_dl) 
+history = fit(5, 0.03, model, train_dl, val_dl) 
 
-"""That's a great result as our model has reached an accuracy of over 80%. 
+"""That's a great result as our model has reached an accuracy of around 90%. 
 While the accuracy does continue to increase as we train for more epochs, the improvement gets smaller 
 with every epoch. Let's visualize this using a line graph""" 
 
 accuracies = [result["val_acc"] for result in history] 
+plt.figure(figsize=(10, 9))
 plt.plot(accuracies, "-x")
 plt.xlabel("epoch")
 plt.ylabel("accuracy")
-plt.title("Accuracy vs Non. of epochs") 
-plt.show()
+plt.title("Accuracy vs No. of epochs") 
+#plt.show()
+
+
+"""Testing with Individual Images 
+
+While we have been tracking the overall accuracy of a model so far, it's also a good idea to look at the 
+model's results on some sample images. Let's test our model with some images from the predefined test dataset of 10,000
+images. We begin by recreating the test dataset with the ToTensor transform
+""" 
+# Define test dataset 
+test_dataset = MNIST(root="data/", 
+                     train=False, 
+                     download=True, 
+                     transform=transforms.ToTensor()) 
+
+"""Here's a sample image from the dataset"""
+img, label = test_dataset[0] 
+plt.figure(figsize=(10, 9))
+plt.imshow(img[0], cmap="gray")
+plt.title(f"Label: {label}") 
+
+"""Let's write a helper function predict_image, which return the predicted label for a single image tensor"""
+def predict_image(img, model): 
+    xb = img.unsqueeze(0)
+    yb = model(xb) 
+    preds = torch.argmax(yb, dim=1) 
+    return preds[0].item()  
+
+img, label = test_dataset[0] 
+plt.figure(figsize=(10, 10))
+plt.imshow(img[0], cmap="gray") 
+plt.title(f"Label: {label} | Predicted: {predict_image(img, model)}") 
+
+img, label = test_dataset[10] 
+plt.figure(figsize=(10, 10))
+plt.imshow(img[0], cmap="gray") 
+plt.title(f"Label: {label} | Predicted: {predict_image(img, model)}")  
+
+img, label = test_dataset[193] 
+plt.figure(figsize=(10, 10))
+plt.imshow(img[0], cmap="gray") 
+plt.title(f"Label: {label} | Predicted: {predict_image(img, model)}") 
+
+img, label = test_dataset[1839] 
+plt.figure(figsize=(10, 10))
+plt.imshow(img[0], cmap="gray") 
+plt.title(f"Label: {label} | Predicted: {predict_image(img, model)}") 
+
+#plt.show()
+
+"""
+Identifying where our model performs poorly can help us improve the model, by collecting more training data, 
+increasing/decreasing the complexity of the model, changing the hyperparameters. 
+As a final step, let's also look at the overall loss and accuracy of the model on the test set.
+"""
+test_dl = DataLoader(test_dataset, batch_size=256) 
+result = evaluate(model, test_dl) 
+print(result)
+
+"""We expect this to be similar to the accuracy/loss on the validation set. If not, we might need a better validation set that has similar data 
+and distribution as the test set (which often comes from real world data)"""
+
+"""SAVING AND LOADING THE MODEL 
+Since we've trained our model for a long time and achieved a reasonable accuracy, it would be a good idea to save the weights and 
+bias matrices to disk, so that we can reuse the model later to avoid retraining from scratch. Here's how to save the model"""
+MODELS_PATH = Path("models/")
+MODELS_PATH.mkdir(parents=True, exist_ok=True)
+MODEL_SAVE_PATH = MODELS_PATH / "mnist-logistic.pth"
+torch.save(model.state_dict(), MODEL_SAVE_PATH) 
