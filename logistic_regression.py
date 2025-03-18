@@ -331,7 +331,7 @@ class MnistModel(nn.Module):
         return {"val_loss": epoch_loss.item(), "val_acc": epoch_acc.item()}
     
     def epoch_end(self, epoch, result): 
-        print(f"Epoch: {epoch} val_loss: {result["val_loss"]:.4f} val_acc: {result["val_acc"]:.4f}") 
+        print(f"\33[32m Epoch: {epoch + 1} val_loss: {result["val_loss"]:.4f} val_acc: {result["val_acc"]:.4f}") 
 
 model = MnistModel()
 
@@ -345,4 +345,15 @@ result0 = evaluate(model, val_dl)
 """The intial accuracy is around 19%, which one might expect from a randomly intialized 
 model (since it has a 1 in 10 chance of getting a label right by guessing)"""
 
-history1 = fit(8, 0.001, model, train_dl, val_dl) 
+history = fit(20, 0.001, model, train_dl, val_dl) 
+
+"""That's a great result as our model has reached an accuracy of over 80%. 
+While the accuracy does continue to increase as we train for more epochs, the improvement gets smaller 
+with every epoch. Let's visualize this using a line graph""" 
+
+accuracies = [result["val_acc"] for result in history] 
+plt.plot(accuracies, "-x")
+plt.xlabel("epoch")
+plt.ylabel("accuracy")
+plt.title("Accuracy vs Non. of epochs") 
+plt.show()
