@@ -147,7 +147,15 @@ class Person:
 
 """Here's how we create or instantiate an object of the class Person""" 
 alex = Person("Alex", 25) 
-#alex.say_hello()
+#alex.say_hello() 
+
+# Define accuracy function 
+def accuracy(outputs, y_true): 
+    y_preds = torch.argmax(outputs, dim=1)
+    return torch.tensor(torch.sum(y_preds==y_true).item() / len(y_preds))
+
+# Define loss function 
+loss_fn = F.cross_entropy
 
 """Classes can also be build upon or textend the functionality of existing clases. Let's extend
 the nn.Module class from PyTorch to define a custom model""" 
@@ -174,17 +182,26 @@ for xb, yb in train_dl:
     probs = F.softmax(outputs, dim=1) 
 
     # Look at sample probabilities 
-    print(f"Sample probabilities: \n{probs[:2]}")
+    #print(f"Sample probabilities: \n{probs[:2]}")
 
     # Add up the probabilties of an output row 
     print(f"Sum: {torch.sum(probs[0]).item()}") 
 
     # Get prediction labels from probalities 
     preds = torch.argmax(probs, dim=1)  
-    print(preds) 
+    #print(preds) 
 
+    # Compare predictions to actual labels
     df = pd.DataFrame({"y_true": yb, "y_preds": preds}) 
-    print(df)
+    #print(df) 
+
+    # Calculate accuracy 
+    acc = accuracy(outputs, yb) 
+    print(f"Accuracy: {acc: .4f}") 
+
+    # Calculate loss 
+    loss = loss_fn(probs, yb) 
+    print(f"Loss: {loss: .5f}")
 
     break  
 
@@ -194,3 +211,32 @@ multidimensional tensors (a list of output rows in our case)"""
 
 """Finally, we determined the predicted label for each image by simply choosing the index of the highest probability in each output row. We can do this by using the torch.armax, the index of the rows's largest
 element OR torch.max which returns each row's largest element and the corresponding index""" 
+
+"""Evaluation Metrics and Loss Function 
+Just as linear regression, we need a way to evaluate how well our model is performing. A 
+natural way to do this would be to find the percentage of labels that were predicted correctly
+"""
+
+"""Accuracy si not an excellent way for us(humans) to evaluate the model. However, it can't be used as a loss function for optimizing our model using 
+gradient descent for the following reasons: 
+1. It's not a differentiable function. torch.argmax or torch.max and == are both contiguous and non-diferentiable operations, 
+se we can't use acccuracy for computing gradients w.r.t the weights and biases
+2. It doesn't take into account the actual probabilities predicted by the model, so it can't provide
+sufficient feedback for incremental improvements 
+
+For these reasons, accuracy is often used as an evaluation metric for clasification, but not as a loss function. 
+A commonly used loss function for classification problems is cross-entropy. 
+
+While it may seem complicated, it's quite simple: 
+* For each output row, pick the predicted probability for correct label 
+* Then take the logarithm of the picked probability. If the probability is high, i.e. close to 1, 
+then its logaritm is a very small negative close to 0. And if the probability is low (close to 0), then its 
+logarithm is a very big negative value. We must multiply the result by -1, which results in a large positve value 
+of loss for poor predictions
+* Finally, the average of the cross entropy across all the output rows to get the overall loss for a batch of data. 
+
+Unlike accuracy, cross-entropy is a contiguous and differentiable function. It also provides useful fedback for incremental improvents in the model (slightly higher proberbility for correct label leads to a lower loss). 
+These two factors make cross-entropy a better choice for the loss function. 
+
+As you might expect, PyTorch provides an efficient implementation of cross-entropy as part of the torch.nn.funcrional package. 
+Moreover, it also performs softmax internally, so we can directly pass the model's predictions wihtout converting into probabilities""" 
